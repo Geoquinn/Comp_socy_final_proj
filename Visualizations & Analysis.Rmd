@@ -1,0 +1,607 @@
+---
+title: "Visualizations & Analysis"
+author: "George D. Quinn"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+## Hand coded to Major Catagories
+
+```{r setup, include=FALSE}
+library(readxl)
+library(dplyr)
+
+# Step 1: Read the Excel file
+hand_database <- read_excel("Full_Database.xlsx", sheet = "hand_coded")
+
+hand_database$mc1 <- apply(hand_database[, c("6", "7", "33", "4")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc2 <- apply(hand_database[, c("5", "10", "13")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc3 <- apply(hand_database[, c("11", "12", "14", "15", "16","17","18","19")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc4 <- apply(hand_database[, c("30", "31")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc5 <- apply(hand_database[, c("2", "3")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc6 <- apply(hand_database[, c("20", "21", "22", "24")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc7 <- apply(hand_database[, c("23")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc8 <- apply(hand_database[, c("26", "32")], 1, function(x) as.integer(any(x == 1)))
+
+hand_database$mc9 <- apply(hand_database[, c("1", "8", "9", "27", "28","29","34","35")], 1, function(x) as.integer(any(x == 1)))
+```
+
+# STM to Major Catagories
+
+```{r}
+STM_data <- read_excel("Full_Database.xlsx", sheet = "STM_data")
+
+STM_data$mc1 <- apply(STM_data[, c("6", "26", "28", "32")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc2 <- apply(STM_data[, c("4", "15", "22", "24", "33")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc3 <- apply(STM_data[, c("2", "9", "11", "17", "20","31")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc4 <- apply(STM_data[, c("13", "21", "25")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc5 <- apply(STM_data[, c("12", "27", "34")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc6 <- apply(STM_data[, c("1", "5", "18", "26", "30")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc7 <- apply(STM_data[, c("14","23","35")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc8 <- apply(STM_data[, c("3", "29")], 1, function(x) as.integer(any(x == 1)))
+
+STM_data$mc9 <- apply(STM_data[, c("8", "16", "19")], 1, function(x) as.integer(any(x == 1)))
+```
+
+# Major Catagories STM - Hand codes correlation martix 
+```{r}
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+
+# Assuming 'hand_database' and 'STM_data' are already loaded and have mc1 to mc9 columns
+# Subset the relevant columns (mc1 to mc9) from both datasets
+hand_mc <- select(hand_database, starts_with("mc"))
+STM_mc <- select(STM_data, starts_with("mc"))
+
+# Bind the two sets of columns by row and rename them
+combined_mc <- bind_rows(hand_mc, STM_mc) %>%
+  rename(
+    Experience = mc1,
+    `Leadership Qualities` = mc2,
+    `Personal Qualities` = mc3,
+    `Government Management` = mc4,
+    `Government Activity / Philosophy` = mc5,
+    `Domestic Policies` = mc6,
+    `Foreign Policies` = mc7,
+    `Group Connections` = mc8,
+    Miscellaneous = mc9
+  )
+
+# Calculate the correlation matrix
+cor_matrix <- cor(combined_mc, use = "complete.obs", method = "pearson")
+
+# Melt the correlation matrix into long format
+melted_cor_matrix <- melt(cor_matrix)
+
+# Plot the correlation matrix using ggplot2
+cor_plot <- ggplot(data = melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "Purple", high = "green", mid = "white", midpoint = 0, limit = c(-1, 1), space = "Lab", name="Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 12, margin = margin(t = 20)),
+        axis.title.y = element_text(size = 12, margin = margin(r = 20)),
+        axis.text.y = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+  labs(x = "hand_coded", y = "stm_coded") +
+  coord_fixed()
+
+# Print the plot
+print(cor_plot)
+```
+
+# All 35 Correlation Matrix
+
+```{r}
+# Merge the two data frames
+unified_set <- merge(hand_database, STM_data, by = "Responses")
+
+# View the first few rows of the unified data frame to verify it's correct
+head(unified_set)
+
+```
+
+```{r}
+unified_set_renamed <- unified_set %>%
+  rename_with(~sub("^(\\d+)\\.y$", "STM_\\1", .), matches("\\.y$")) %>%
+  rename_with(~sub("^(\\d+)\\.x$", "HAND_\\1", .), matches("\\.x$"))
+
+# View the names of the updated data frame to verify
+names(unified_set_renamed)
+
+unified_set_renamed <- unified_set_renamed %>%
+  rename_with(~sub("^mc(\\d+)\\.y$", "STM_mc\\1", .), matches("^mc\\d+\\.y$")) %>%
+  rename_with(~sub("^mc(\\d+)\\.x$", "HAND_mc\\1", .), matches("^mc\\d+\\.x$"))
+
+names(unified_set_renamed)
+```
+
+```{r}
+# Assuming unified_set_renamed is already loaded and has columns STM_1 to STM_35 and HAND_1 to HAND_35
+
+# Specify the HAND columns to include based on the file you provided
+hand_columns <- c(21, 14, 32, 11, 25, 6, 8, 27, 11, 30, 15, 3, 33, 23, 10, 1, 11, 25, 20, 11, 13, 30, 23, 15, 13, 33, 2, 7, 3, 22, 12, 5, 13, 9, 23)
+
+# Create a vector with the STM column names
+stm_columns <- paste0("STM_", 1:35)
+
+# Create a vector with the HAND column names using the hand_columns vector
+hand_column_names <- paste0("HAND_", hand_columns)
+
+# Select only the relevant columns from the unified_set_renamed data frame
+stm_data <- unified_set_renamed[stm_columns]
+hand_data <- unified_set_renamed[hand_column_names]
+
+# Calculate the correlation matrix between the STM and HAND columns
+correlation_matrix <- cor(stm_data, hand_data, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a long format for easy plotting or viewing
+correlation_long <- reshape2::melt(correlation_matrix)
+
+# View the correlation_long data frame
+print(correlation_long)
+```
+
+
+```{r}
+library(ggplot2)
+
+# Assuming 'correlation_long' is already created with 'reshape2::melt()' from the correlation matrix
+
+# Convert factor variables to character so that they are plotted in the original order
+correlation_long$Var1 <- as.character(correlation_long$Var1)
+correlation_long$Var2 <- as.character(correlation_long$Var2)
+
+# Plot the correlation matrix
+ggplot(correlation_long, aes(Var2, Var1, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "Purple", high = "green", mid = "white", midpoint = 0, limit = c(-0.5, 0.5), space = "Lab", name="Correlation") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.text.y = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(fill = "Correlation", 
+       title = "Correlation Matrix", 
+       x = "HAND Columns", 
+       y = "STM Columns")
+
+# If Var1 and Var2 are not in the order you want, consider reordering them before plotting
+```
+
+
+# Data Set Totals 
+
+```{r}
+# Calculate frequencies for each of the columns mc1 to mc9
+freq_mc1 <- table(hand_database$mc1, useNA = "ifany")
+freq_mc2 <- table(hand_database$mc2, useNA = "ifany")
+freq_mc3 <- table(hand_database$mc3, useNA = "ifany")
+freq_mc4 <- table(hand_database$mc4, useNA = "ifany")
+freq_mc5 <- table(hand_database$mc5, useNA = "ifany")
+freq_mc6 <- table(hand_database$mc6, useNA = "ifany")
+freq_mc7 <- table(hand_database$mc7, useNA = "ifany")
+freq_mc8 <- table(hand_database$mc8, useNA = "ifany")
+freq_mc9 <- table(hand_database$mc9, useNA = "ifany")
+
+# Print the frequency tables
+print(freq_mc1)
+print(freq_mc2)
+print(freq_mc3)
+print(freq_mc4)
+print(freq_mc5)
+print(freq_mc6)
+print(freq_mc7)
+print(freq_mc8)
+print(freq_mc9)
+```
+
+```{r}
+# Calculate frequencies for each of the columns mc1 to mc9
+STM_mc1 <- table(STM_data$mc1, useNA = "ifany")
+STM_mc2 <- table(STM_data$mc2, useNA = "ifany")
+STM_mc3 <- table(STM_data$mc3, useNA = "ifany")
+STM_mc4 <- table(STM_data$mc4, useNA = "ifany")
+STM_mc5 <- table(STM_data$mc5, useNA = "ifany")
+STM_mc6 <- table(STM_data$mc6, useNA = "ifany")
+STM_mc7 <- table(STM_data$mc7, useNA = "ifany")
+STM_mc8 <- table(STM_data$mc8, useNA = "ifany")
+STM_mc9 <- table(STM_data$mc9, useNA = "ifany")
+
+# Print the frequency tables
+print(STM_mc1)
+print(STM_mc2)
+print(STM_mc3)
+print(STM_mc4)
+print(STM_mc5)
+print(STM_mc6)
+print(STM_mc7)
+print(STM_mc8)
+print(STM_mc9)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# Sample data frame creation for demonstration purposes
+# Assuming unified_set_renamed has columns named HAND_mc1, HAND_mc2, ..., HAND_mc9, STM_mc1, STM_mc2, ..., STM_mc9
+# unified_set_renamed <- data.frame(...)
+
+# Initialize an empty list to store crosstab results
+crosstabs_list <- list()
+
+for(i in 1:9) {
+  # Dynamically create column names
+  hand_col <- paste0("HAND_mc", i)
+  stm_col <- paste0("STM_mc", i)
+  
+  # Generate the crosstab for the current pair of columns
+  crosstab_result <- table(unified_set_renamed[[hand_col]], unified_set_renamed[[stm_col]])
+  
+  # Store the result in the list with a descriptive name
+  crosstabs_list[[paste0("Crosstab_", hand_col, "_", stm_col)]] <- crosstab_result
+}
+
+# Now crosstabs_list contains all the crosstabs
+# You can access each crosstab using crosstabs_list[["Crosstab_HAND_mc1_STM_mc1"]] for the first pair, and so on.
+
+# If you want to print all crosstabs
+for (name in names(crosstabs_list)) {
+  cat("Crosstab for:", name, "\n")
+  print(crosstabs_list[[name]])
+  cat("\n")
+}
+```
+
+# STM - Hand Desciptives
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Assuming unified_set_renamed is your dataframe
+
+# Reshape the data into a long format
+long_format <- unified_set_renamed %>%
+  pivot_longer(cols = starts_with("HAND_mc") | starts_with("STM_mc"),
+               names_to = c("Type", "mc_number"),
+               names_sep = "_",
+               values_to = "value") %>%
+  mutate(Type = factor(Type, levels = c("HAND", "STM")))
+
+# Count the occurrences of 1s
+counts <- long_format %>%
+  filter(value == 1) %>%
+  group_by(Type, mc_number) %>%
+  summarise(count = n(), .groups = 'drop')
+
+# Generate the side-by-side bar chart for counts of 1s
+ggplot(counts, aes(x = mc_number, y = count, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Major Category - Hand codes & STM",
+       x = "Major Category",
+       y = "Coded Responses") +
+  scale_fill_manual(values = c("HAND" = "skyblue", "STM" = "tomato")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## HAND - STM MAJOR CAT - Correlations 
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming 'counts' is your dataframe that contains all the data
+# Filter out HAND counts
+hand_counts <- counts %>% 
+  filter(Type == "HAND") %>% 
+  select(mc_number, count)
+
+# Filter out STM counts
+stm_counts <- counts %>% 
+  filter(Type == "STM") %>% 
+  select(mc_number, count)
+
+# Assuming you need to correlate the counts by 'mc_number' now:
+# First, ensure both dataframes are ordered by 'mc_number' to align them properly
+hand_counts <- hand_counts %>% arrange(mc_number)
+stm_counts <- stm_counts %>% arrange(mc_number)
+
+# Combine the counts into one dataframe by 'mc_number'
+# The mc_number column should be identical between the two sets, so we can bind the rows
+combined_counts <- full_join(hand_counts, stm_counts, by = "mc_number") %>%
+  rename(hand_count = count.x, stm_count = count.y)
+
+# Calculate the correlation on the combined data
+cor_value <- cor(combined_counts$hand_count, combined_counts$stm_count, use = "complete.obs")
+
+# Create a scatter plot with a regression line to visualize the correlation
+cor_plot <- ggplot(combined_counts, aes(x = hand_count, y = stm_count)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = paste("Correlation between HAND and STM counts (r =", round(cor_value, 2), ")"),
+       x = "HAND Count",
+       y = "STM Count") +
+  theme_minimal()
+
+# Print the plot
+print(cor_plot)
+```
+
+## STM - HAND MAJOR CAT: Correlations
+
+```{r}
+# Specify the HAND columns to include based on the file you provided
+hand_mc_columns <- paste0("HAND_mc",1:9)
+
+# Create a vector with the STM column names
+stm_mc_columns <- paste0("STM_mc", 1:9)
+
+# Create a vector with the HAND column names using the hand_columns vector
+hand_column_names <- paste0("HAND_", hand_columns)
+
+# Select only the relevant columns from the unified_set_renamed data frame
+stm_data_mc <- unified_set_renamed[stm_mc_columns]
+hand_data_mc <- unified_set_renamed[hand_mc_columns]
+
+# Calculate the correlation matrix between the STM and HAND columns
+correlation_matrix_mc <- cor(stm_data_mc, hand_data_mc, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a long format for easy plotting or viewing
+correlation_major_cat <- reshape2::melt(correlation_matrix_mc)
+
+# Check the renamed data frame
+print(correlation_major_cat)
+```
+
+# STM - HAND : tile chart
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming correlation_major_cat is the original data frame
+
+# Define the new names for the HAND and STM variables
+hand_names <- c("Experience", "Leadership Qualities", "Personal Qualities", "Gov't Management", 
+                "Gov't Philosophy", "Domestic Policies", "Foreign Policies", 
+                "Group Connections", "Miscellaneous")
+stm_names <- paste(hand_names, "STM", sep=" ")
+
+# Use scale_x_discrete and scale_y_discrete to rename the axis ticks in the plot
+tile_chart <- ggplot(correlation_major_cat, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "purple", high = "green", mid = "white", midpoint = 0, limit = c(-0.5, 0.5), space = "Lab", name="Correlation") +
+  scale_x_discrete(labels = hand_names) +
+  scale_y_discrete(labels = stm_names) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 12, margin = margin(t = 20)),
+        axis.title.y = element_text(size = 12, margin = margin(r = 20)),
+        axis.text.y = element_text(angle = 45, hjust = 1),) +
+  labs(fill = "Correlation", 
+       title = "STM-HAND Correlation Matrix", 
+       x = "HAND Columns", 
+       y = "STM Columns") +
+  coord_fixed()
+# Display the tile chart
+print(tile_chart)
+```
+
+
+```{r}
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(stargazer)
+
+# Assuming unified_set_renamed is your dataframe
+
+# Reshape the data into a long format
+long_format <- unified_set_renamed %>%
+  pivot_longer(cols = starts_with("HAND_mc") | starts_with("STM_mc"),
+               names_to = c("Model", "Category"),
+               names_sep = "_",
+               values_to = "Value") %>%
+  mutate(Model = factor(Model, levels = c("HAND", "STM")))
+
+# Summarize the counts of 1s for each category and model
+frequency_table <- long_format %>%
+  filter(Value == 1) %>%
+  count(Model, Category) %>%
+  spread(key = Category, value = n, fill = 0) # Spread categories across columns
+
+print(frequency_table)
+```
+
+# STM - HAND confusion Matrix
+
+```{r}
+# Plot the heatmap
+ggplot(correlation_long, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1, 1), space = "Lab", name="Correlation") +
+  theme_minimal() +
+  labs(title = "Correlation between HAND_mcX and STM_mcX", x = "MC Category", y = "") +
+  geom_text(aes(label = ifelse(is.na(value), "NA", sprintf("%.2f", value))), color = "black", size = 4) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Importing Pilot GPT-4 derived data 
+
+```{r}
+library(readxl)
+AI_unified <- read_excel("AI_unified.xlsx")
+```
+
+# HAND - GPT-4 Major Categories 
+
+```{r}
+# Specify the HAND columns to include based on the file you provided
+hand_mc_columns <- paste0("HAND_mc",1:9)
+
+# Create a vector with the STM column names
+AI_mc_columns <- paste0("AI_mc", 1:9)
+
+# Create a vector with the HAND column names using the hand_columns vector
+hand_column_names <- paste0("HAND_", hand_columns)
+
+# Select only the relevant columns from the unified_set_renamed data frame
+AI_data_mc <- AI_unified[AI_mc_columns]
+hand_data_mc <- AI_unified[hand_mc_columns]
+
+# Calculate the correlation matrix between the STM and HAND columns
+correlation_matrix_mc_AI <- cor(hand_data_mc, AI_data_mc, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a long format for easy plotting or viewing
+correlation_major_cat_AI <- reshape2::melt(correlation_matrix_mc_AI)
+
+# Check the renamed data frame
+print(correlation_major_cat_AI)
+```
+
+# GPT4-HAND Major Cat Visualizations
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Assuming unified_set_renamed is your dataframe
+
+# Reshape the data into a long format
+long_format_AI <- AI_unified %>%
+  pivot_longer(cols = starts_with("HAND_mc") | starts_with("AI_mc"),
+               names_to = c("Type", "mc_number"),
+               names_sep = "_",
+               values_to = "value") %>%
+  mutate(Type = factor(Type, levels = c("HAND", "AI")))
+
+# Count the occurrences of 1s
+counts_AI <- long_format_AI %>%
+  filter(value == 1) %>%
+  group_by(Type, mc_number) %>%
+  summarise(count = n(), .groups = 'drop')
+
+# Generate the side-by-side bar chart for counts of 1s
+ggplot(counts_AI, aes(x = mc_number, y = count, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Major Category - Hand codes & AI",
+       x = "Major Category",
+       y = "Coded Responses") +
+  scale_fill_manual(values = c("HAND" = "skyblue", "AI" = "tomato")) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming correlation_major_cat is the original data frame
+
+# Define the new names for the HAND and STM variables
+hand_names <- c("Experience", "Leadership Qualities", "Personal Qualities", "Gov't Management", 
+                "Gov't Philosophy", "Domestic Policies", "Foreign Policies", 
+                "Group Connections", "Miscellaneous")
+AI_names <- paste(hand_names, "AI", sep=" ")
+
+# Use scale_x_discrete and scale_y_discrete to rename the axis ticks in the plot
+tile_chart_AI <- ggplot(correlation_major_cat_AI, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "purple", high = "green", mid = "white", midpoint = 0, limit = c(-0.5, 0.5), space = "Lab", name="Correlation") +
+  scale_x_discrete(labels = hand_names) +
+  scale_y_discrete(labels = AI_names) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_text(size = 12, margin = margin(t = 20)),
+        axis.title.y = element_text(size = 12, margin = margin(r = 20)),
+        axis.text.y = element_text(angle = 45, hjust = 1),) +
+  labs(fill = "Correlation", 
+       title = "AI-HAND Correlation Matrix", 
+       x = "HAND Columns", 
+       y = "AI Columns") +
+  coord_fixed()
+
+# Display the tile chart
+print(tile_chart_AI)
+```
+
+
+
+# HAND - GPT-4 ALL 35
+```{r}
+# Assuming unified_set_renamed is already loaded and has columns STM_1 to STM_35 and HAND_1 to HAND_35
+
+# Specify the HAND columns to include based on the file you provided
+hand_columns <- paste0("HAND_", 1:35)
+
+# Create a vector with the STM column names
+AI_columns <- paste0("AI_", 1:35)
+
+# Create a vector with the HAND column names using the hand_columns vector
+hand_column_names <- paste0("HAND_", hand_columns)
+
+# Select only the relevant columns from the unified_set_renamed data frame
+AI_data <- AI_unified[AI_columns]
+hand_data <- AI_unified[hand_columns]
+
+# Calculate the correlation matrix between the STM and HAND columns
+correlation_matrix_AI <- cor(AI_data, hand_data, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a long format for easy plotting or viewing
+correlation_AI <- reshape2::melt(correlation_matrix_AI)
+
+# View the correlation_long data frame
+print(correlation_AI)
+```
+
+
+```{r}
+library(ggplot2)
+
+# Assuming 'correlation_long' is already created with 'reshape2::melt()' from the correlation matrix
+
+# Convert factor variables to character so that they are plotted in the original order
+correlation_AI$Var1 <- as.character(correlation_AI$Var1)
+correlation_AI$Var2 <- as.character(correlation_AI$Var2)
+
+# Plot the correlation matrix
+ggplot(correlation_AI, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), vjust = 1) +
+  scale_fill_gradient2(low = "Purple", high = "green", mid = "white", midpoint = 0, limit = c(-0.5,0.5), space = "Lab", name="Correlation") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        axis.text.y = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  labs(fill = "Correlation", 
+       title = "Correlation Matrix", 
+       x = "HAND Columns", 
+       y = "STM Columns")
+```
+
